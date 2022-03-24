@@ -1,0 +1,106 @@
+//Defining LEDs
+int data = 2; 
+int clock = 3;
+int latch = 4;
+//Defining Board and Ship Size
+const int MAX_BOARD_SIZE=8;
+const int SHIP_SIZE=3;
+int numberOfHits = 0;
+
+int locationCells[SHIP_SIZE];
+
+const int LedValues[]={1,2,4,8,16,32,64,128};
+int bitsLED=0;
+
+void setup() {
+  // put your setup code here, to run once:
+  pinMode(data, OUTPUT);
+  pinMode(clock, OUTPUT);  
+  pinMode(latch, OUTPUT);
+  Serial.begin(9600);
+  setLocationCells();
+  updateLEDs(0);
+}
+
+void loop() {
+  // put your main code here, to run repeatedly:
+  //Call checkYourself() and get result
+  String result=checkYourself();
+  Serial.println(result);
+  delay(500);
+  if (result == "kill"){
+    exit(1);
+  }
+  
+}
+
+
+//Update the LEDs with a new value
+void updateLEDs(int value){
+  digitalWrite(latch, LOW);     //Pulls the chips latch low
+  shiftOut(data, clock, MSBFIRST, value); //Shifts out the 8 bits to the shift register
+  digitalWrite(latch, HIGH);   //Pulls the latch high displaying the data
+}
+
+/*getGuess is responsible for getting input from the serial monitor.
+ * It returns a char to the caller.
+ */
+
+ char getGuess(){
+  char readinput='^';
+  while ((readinput<'1') || (readinput > '8')){
+    Serial.println("Enter a guess(1-8):");
+    while (Serial.available()==0){}
+    readinput = Serial.read();
+    Serial.print("You have entered: ");
+    Serial.println(readinput);
+    if ((readinput < '1')||(readinput > '8')){
+      Serial.println("Invalid input");
+    }
+    
+  }
+  Serial.println(readinput);
+    return readinput;
+ }
+ /*A function to initialize and create consecutive random places for
+  * our ship.
+  */
+void setLocationCells(){
+  //generate a random number between 0 and 5;
+  int startLocation=random (0, MAX_BOARD_SIZE - SHIP_SIZE-1);
+  Serial.print("Location Cell generated are: ");
+  //assign the locationcells
+  for (int i=0;i<SHIP_SIZE;i++){
+    locationCells[i]=startLocation+i;
+    Serial.print(locationCells[i]);
+  }
+  Serial.println();
+}
+
+/*A function that checks the users guess and returns hit, miss or kill.
+ * Note this function assumes the guess is valid.
+ */
+String checkYourself(){
+  //get the users guess
+  char userGuess=getGuess();
+  String result="miss";
+  //convert the user guess to int.
+  int guess = (userGuess - '0');
+  //check the guess with the locationCells array
+  for (int i=0;i<SHIP_SIZE;i++){
+    //if the user's guess matches
+    if (guess==locationCells[i]){
+      numberOfHits++;
+      locationCells[i]=-1;
+      //The following lines have been changed
+      bitsLED=bitsLED+LedValues[guess-1];
+      updateLEDs(bitsLED);
+      if (numberOfHits ==SHIP_SIZE){
+        result="kill";
+      }else result="hit";
+    }
+    //if it doesn't
+  }
+  
+  return result;
+}
